@@ -24,4 +24,7 @@ $api_simple_key = "API_KEY";
 
 $base_url = "http://localhost/mirror-quickstart-php";
 
-$sqlite_database = "/tmp/database.sqlite";
+$db_host = "DATABASE_HOST";
+$db_user = "DATABASE_USER";
+$db_pass = "DATABASE_PASS";
+$db_db = "DATABASE_DATABASE";

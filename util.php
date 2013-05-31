@@ -21,48 +21,68 @@ require_once 'mirror-client.php';
 require_once 'google-api-php-client/src/Google_Client.php';
 require_once 'google-api-php-client/src/contrib/Google_MirrorService.php';
 
-
 function store_credentials($user_id, $credentials) {
   $db = init_db();
+  
+  $user_id = $db->real_escape_string(strip_tags($user_id));
+  $credentials = $db->real_escape_string(strip_tags($credentials));
 
-  $user_id = sqlite_escape_string(strip_tags($user_id));
-  $credentials = sqlite_escape_string(strip_tags($credentials));
-
-  $insert = "insert into credentials values ('$user_id', '$credentials')";
-  sqlite_exec($db, $insert);
-
+  $insert = "insert into credentials values (null, '$user_id', '$credentials')";
+  $db->real_query($insert);
 }
 
 function get_credentials($user_id) {
   $db = init_db();
-  $user_id = sqlite_escape_string(strip_tags($user_id));
+  $user_id = $db->real_escape_string(strip_tags($user_id));
 
-  $query = sqlite_query($db, "select * from credentials where userid = '$user_id'");
-
-  $row = sqlite_fetch_array($query);
-  return $row['credentials'];
+  $query = "select * from credentials where userid = '$user_id'";
+  
+  $result = $db->query($query);
+  if($result){
+    $val = FALSE;
+    while ($row = $result->fetch_object()){
+      $val = $row;
+    }
+    // Free result set
+    $result->close();
+    return $val->credentials;
+  }
+  else {
+    return FALSE;
+  }
 }
 
 function list_credentials() {
   $db = init_db();
 
-  // Must use explicit select instead of * to get the rowid
-  $query = sqlite_query($db, 'select userid, credentials from credentials');
-  return sqlite_fetch_all($query, SQLITE_ASSOC);
-
+  $query = "select * from credentials";
+  
+  $result = $db->query($query);
+  $out = array();
+  $id = 0;
+  if($result){
+    while ($row = $result->fetch_object()){
+      $val = $row;
+      $out[$id]['userid'] = $row->userid;
+      $out[$id]['credentials'] = $row->credentials;
+      $id++;
+    }
+    // Free result set
+    $result->close();
+  }
+  
+  return $out;
 }
 
 // Create the credential storage if it does not exist
 function init_db() {
-  global $sqlite_database;
-
-  $db = sqlite_open($sqlite_database);
-  $test_query = "select count(*) from sqlite_master where name = 'credentials'";
-  if (sqlite_fetch_single(sqlite_query($db, $test_query)) == 0) {
-    $create_table = "create table credentials (userid text, credentials text);";
-    sqlite_exec($db, $create_table);
-  }
-  return $db;
+  global $db_host;
+  global $db_user;
+  global $db_pass;
+  global $db_db;
+  
+  $mysqli = new mysqli($db_host, $db_user, $db_pass, $db_db);
+  return $mysqli;
 }
 
 function bootstrap_new_user() {
@@ -85,3 +105,4 @@ function bootstrap_new_user() {
   subscribe_to_notifications($mirror_service, "timeline",
     $_SESSION['userid'], $base_url . "/notify.php");
 }
+
